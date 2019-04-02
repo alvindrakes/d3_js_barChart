@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Malaysia Population throughout the years</title>
+        <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+        <script type="text/javascript" src="./tooltips.js"></script>
+
+        <style>
+           div.tooltip {	
+            position: absolute;			
+            text-align: center;			
+            width: 200px;					
+            height: 30px;					
+            padding: 2px;				
+            font: 12px sans-serif;		
+            background: lightsteelblue;	
+            border: 0px;		
+            border-radius: 8px;			
+            pointer-events: none;			
+        }
+
+       
+        select {
+            display: block;
+            position: absolute;			
+            text-align: center;			
+            width: 120px;					
+            height: 28px;					
+            padding: 2px;				
+            font: 12px sans-serif;		
+            background: lightsteelblue;	
+            border: 0px;		
+            border-radius: 8px;			
+        }
+        .bar {
+            fill: #3bc4e4;
+            opacity: 0.8;
+        }
+        .bar:hover {
+        fill: rgb(150,165,180);
+    }
+        .axis {
+            font: 10px sans-serif;
+            fill: white;
+        }
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: white;
+            shape-rendering: crispEdges;
+        }
+
+        body {
+            background-color: rgb(50, 60, 70);
+            font: 10px sans-serif;
+        }
+        .tooltip {
+        background-color: rgba(160, 170, 187, 0.5);
+        margin: 10px;
+        height: 70px;
+        width: 200px;
+        padding-left: 10px;
+        padding-top: 10px;
+        -webkit-border-radius: 10px;
+        -moz-border-radius: 10px;
+        border-radius: 10px;
+    }
+        </style>
+    </head>
+    <body>
+        <div id='vis-container'></div>
+        <script type="text/javascript">
+            // Load data from csv file and create visualization 
+            // the years will be contsant throughout the visualisation (x-axis)
+            var years = ["1955","1960","1965","1970","1975","1980","1985","1990","1995","2000","2005","2010",
+            "2015","2016","2017","2018","2019","2020","2025","2030","2035","2040","2045","2050",];
+
+
+            var yDropdownVariables = [];
+            var yData = 0;
+
+            d3.csv("malaysiaPopulation.csv", function(error, data) {
+                var yDropdownVariables = {};
+                data.forEach(function(d) {
+                    var year = d.year;
+                    yDropdownVariables[year] = [];
+                    console.log(yDropdownVariables);
+
+                    // get all y-axis variables 
+                    years.forEach(function(field) {
+                        yDropdownVariables[year].push( +d[field] );
+                    });
+                });
+                console.log(yDropdownVariables);
+                makeVis(yDropdownVariables);
+            });
+
+            var makeVis = function( yDropdownVariables) {
+                // Define dimensions of vis
+                var margin = { top: 50, right: 100, bottom: 50, left: 100 },
+                    width  = 1000- margin.left - margin.right,
+                    height = 600 - margin.top  - margin.bottom;
+
+            
+                // Make x scale
+                var xScale = d3.scale.ordinal()
+                    .domain(years)
+                    .rangeRoundBands([0, width], 0.3);
+
+                // Make y scale, the domain will be defined on bar update
+                var yScale = d3.scale.linear()
+                    .range([height, 0]);
+
+                // Create canvas
+                var canvas = d3.select("#vis-container")
+                  .append("svg")
+                    .attr("width",  width  + margin.left + margin.right)
+                    .attr("height", height + margin.top  + margin.bottom)
+                  .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+                // Make x-axis and add to canvas
+                var xAxis = d3.svg.axis()
+                    .scale(xScale)
+                    .orient("bottom");
+
+                canvas.append("g")
+                    .attr("class", "x axis")
+                    .attr("transform", "translate(0," + height + ")")
+                    .call(xAxis);
+
+                // var tooltip = d3.select("body")
+                //     .append("div")
+                //     .style("position", "absolute")
+                //     .style("z-index", "10")
+                //     .style("visibility", "hidden")
+                //     .text(yScale(yData));
+
+
+                // Make y-axis and add to canvas
+                var yAxis = canvas.append("g")
+                    .attr("class", "y axis")
+                    .call(d3.svg.axis().scale(yScale).orient("left"));
+                    
+
+                yAxis.append("text")
+                    .attr("y", 8)
+                    .attr("dy", ".80em")
+                    .style("text-anchor", "end");
+
+
+                    // update the bar when new variable is sleected from dropdown 
+                var updateBars = function(data) {
+                    yScale.domain( d3.extent(data) );
+                    yAxis.call(d3.svg.axis().scale(yScale).orient("left"))
+                    
+
+                    // Define the div for the tooltip
+                var div = d3.select("body").append("div")	
+                    .attr("class", "tooltip")				
+                    .style("opacity", 0);
+
+                    var bars = canvas.selectAll(".bar").data(data)
+                    .call(d3.helper.tooltip(function (d) {return "y-value: " + yData}));
+;
+
+                    // Add bars for new data
+                    bars.enter()
+                      .append("rect")
+                        .attr("class", "bar")
+                        .attr("x", function(d,i) { return xScale( years[i] ); })  // x-axis variable (years)
+                        .attr("width", xScale.rangeBand())
+                        // .attr("y", function(d,i) { return yScale(d); console.log*yScale(d);})
+                        //.attr("height", function(d,i) { return height - yScale(d); });
+
+                    // Update bar chart according to new data
+                    bars
+                        .transition().duration(300)
+                        .attr("y", function(d,i) { return yScale(d);
+                             console.log(d(i));
+                            })
+                        .attr("height", function(d,i) { return height - yScale(d) });
+
+                    // Remove old ones
+                    bars.exit().remove();
+                };
+
+                // Handler for dropdown value change
+                var dropdownChange = function() {
+                    var new_y_Variable = d3.select(this).property('value'),
+                        newData   =  yDropdownVariables[new_y_Variable];
+
+                    updateBars(newData);
+                };
+
+                // Get y_variables & add them to dropdown
+                var y_variables = Object.keys(yDropdownVariables).sort();
+
+                var dropdown = d3.select("#vis-container")
+                    .insert("select", "svg")
+                    .on("change", dropdownChange);
+
+                dropdown.selectAll("option")
+                    .data(y_variables)
+                    .enter().append("option")
+                    .attr("value", function (d) { return d; })
+                    .text(function (d) {
+                        return d[0].toUpperCase() + d.slice(1,d.length); // capitalize 1st letter
+                    });
+
+                var initialData = yDropdownVariables[ y_variables[0] ];
+                updateBars(initialData);
+            };
+        </script>
+    </body>
+</html>
